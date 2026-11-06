@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jeroens Todo&#39;s</title>
+<meta name="robots" content="noindex, nofollow">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#0f1420;--card:#1a2132;--line:#2a3348;--txt:#e8ecf4;--mut:#93a0b8;}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;padding:24px;max-width:1100px;margin:0 auto}
+h1{font-size:1.5rem;margin-bottom:4px}
+.mut{color:var(--mut);font-size:.9rem}
+h2{font-size:1.05rem;margin:26px 0 10px;display:flex;align-items:center;gap:8px}
+.badge{background:var(--line);border-radius:99px;padding:1px 10px;font-size:.75rem;color:var(--mut)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-left:4px solid #888;border-radius:10px;padding:12px 14px}
+.card .desc{font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:.8rem;color:var(--mut);align-items:center}
+.chip{border-radius:99px;padding:1px 9px;font-size:.72rem;font-weight:600}
+.btn{background:var(--line);color:var(--txt);border:none;border-radius:7px;padding:4px 10px;font-size:.75rem;cursor:pointer}
+.btn:hover{filter:brightness(1.3)}
+.btn.main{background:#2563eb}
+.overdue{color:#f87171;font-weight:600}
+details{margin-top:26px}summary{cursor:pointer;font-size:1.05rem;font-weight:600}
+#coach{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:18px}
+#coachlog{display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto}
+.msg{padding:8px 12px;border-radius:10px;font-size:.9rem;line-height:1.45;max-width:92%}
+.msg.user{align-self:flex-end;background:#2563eb}
+.msg.bot{align-self:flex-start;background:var(--line)}
+.msg.bot.warn{background:#7c2d12}
+.tasklink{color:#93c5fd;cursor:pointer;text-decoration:underline}
+.msg .tasklink{margin-right:10px}
+form.inline{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+input,select{background:#0d1220;border:1px solid var(--line);border-radius:9px;padding:10px 12px;color:var(--txt);font-size:.95rem}
+input.small,select.small{padding:6px 8px;font-size:.85rem;width:auto}
+#f-desc{flex:1;min-width:220px}
+.empty{color:var(--mut);font-style:italic;font-size:.9rem;padding:6px 2px}
+#bgfoto{position:fixed;inset:0;z-index:-2;background:#0f1420 center/cover no-repeat}
+#bgoverlay{position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(15,20,32,.62),rgba(15,20,32,.55))}
+#weeklabel{position:fixed;right:12px;bottom:10px;font-size:.7rem;color:rgba(255,255,255,.45);pointer-events:none}
+.filters{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.filterbtn{background:var(--line);border:none;color:var(--txt);border-radius:99px;padding:5px 14px;font-size:.8rem;cursor:pointer;opacity:.65}
+.filterbtn.on{opacity:1;outline:2px solid #fff}
+.flash{animation:flash 1.6s ease 2}
+@keyframes flash{0%,100%{background:var(--card)}50%{background:#3b82f6}}
+.editform{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.editform input,.editform select{width:100%}
+.editform .btnrow{display:flex;gap:8px}
+label.f{font-size:.75rem;color:var(--mut);display:block;margin-bottom:2px}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+#newform input,#newform select{padding:4px 6px;font-size:.8rem}
+#newform input[type=number]{width:64px}
+#newform input#f-desc{min-width:140px}
+.cal{position:fixed;z-index:50;background:#0d1220;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:.8rem;width:236px;box-shadow:0 8px 24px rgba(0,0,0,.55)}
+.cal .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;color:var(--txt)}
+.cal .head b{font-size:.85rem}
+.cal .head button{background:none;border:none;color:var(--txt);cursor:pointer;font-size:1.05rem;padding:1px 8px;line-height:1}
+.cal table{border-collapse:collapse;width:100%}
+.cal th{color:var(--mut);font-weight:400;padding:2px 0}
+.cal td{text-align:center;padding:1px}
+.cal td a{display:block;padding:3px 0;border-radius:6px;color:var(--txt);cursor:pointer}
+.cal td a:hover{background:var(--line)}
+.cal td.today a{outline:2px solid #3b82f6;font-weight:700}
+.cal td.today.today-label a{outline:none}
+.cal td.sel a{background:#2563eb;color:#fff}
+.cal .todaylabel{display:block;text-align:center;margin-top:6px;font-size:.75rem;color:#93c5fd}
+.cal .todaylabel span{cursor:pointer;text-decoration:underline}
+#micbtn.rec{background:#ef4444}@keyframes micpulse{50%{filter:brightness(1.6)}}#micbtn.rec{animation:micpulse 1s infinite}@media (max-width:700px){body{padding:14px 12px 44px}h1{font-size:1.25rem}h2{font-size:1rem;margin:20px 0 8px;flex-wrap:wrap}.cards{grid-template-columns:1fr}.btn{padding:9px 14px;font-size:.9rem;border-radius:9px}input,select{font-size:16px}#newform{flex-direction:column;align-items:stretch}#newform .btn.main{padding:12px}#coachlog{max-height:190px}#coach{padding:12px}.card{padding:12px}.cal{width:min(280px,calc(100vw - 24px))}summary{padding:6px 0}#chatinput{min-width:0}}</style>
+</head>
+<body>
+<h1>Jeroens Todo&#39;s</h1>
+<div class="mut" id="todayline"></div>
+
+<div class="filters" id="filters"></div>
+
+<h2>&#128221; Nieuwe taak</h2>
+<div id="newtask">
+<form class="inline" id="newform">
+  <select id="f-theme" class="small" required></select>
+  <input id="f-desc" placeholder="Wat ga je doen?" required>
+  <input id="f-people" class="small" placeholder="Met/voor wie?">
+  <input type="text" id="f-start" class="small" placeholder="vanaf" title="Vroegste start (dd-mm of dd-mm-jjjj, of klik voor kalender)">
+  <input type="text" id="f-deadline" class="small" placeholder="deadline" title="Deadline (dd-mm of dd-mm-jjjj, of klik voor kalender)">
+  <input type="number" id="f-duration" class="small" value="30" min="5" step="5" title="Geschatte duur (min)">
+  <button class="btn main" type="submit">Voeg toe</button>
+</form>
+</div>
+
+<h2>&#128170; Coach <span class="mut">(klik op een taak in een coach-regel om erheen te springen)</span> <button class="btn" id="keybtn" title="Mistral API-key instellen/wijzigen">&#9881;&#65039; API-key</button></h2>
+<div id="coach"><div id="coachlog"></div>
+<form class="inline" id="chatform"><input id="chatinput" style="flex:1" placeholder="Praat met je coach: stel vragen of geef opdrachten (bijv. 'plan een gesprek met Nitesh over FJ', 'wat is verstandig vandaag?', 'haal alles van Eneco naar volgende week')" autocomplete="off"><button type="button" class="btn" id="micbtn" title="Spreek je opdracht in (Nederlands)">&#127908;</button><button class="btn main" type="submit">Verstuur</button></form>
+</div>
+
+<h2>&#128197; Vandaag <span class="badge" id="cnt-today"></span></h2><div class="cards" id="b-today"></div>
+<h2>Deze week <span class="badge" id="cnt-week"></span></h2><div class="cards" id="b-week"></div>
+<h2>Volgende week <span class="badge" id="cnt-next"></span></h2><div class="cards" id="b-next"></div>
+<details id="later"><summary>Verder weg <span class="badge" id="cnt-later"></span></summary><div class="cards" id="b-later" style="margin-top:10px"></div></details>
+
+<script>
+var SUPA_URL='https://gspuzicxsgrywnuwdttv.supabase.co';
+var SUPA_KEY='sb_publishable_xAKUrMZSgWecCI8NpM6suQ_5HW75pUp';
+var db=supabase.createClient(SUPA_URL,SUPA_KEY);
+var BASE={capgemini:{label:'Capgemini',color:'#8b5cf6'},prive:{label:'Privé',color:'#10b981'},kerk:{label:'Kerk',color:'#f59e0b'}};
+var CLIENTCOLORS=['#3b82f6','#06b6d4','#ef4444','#ec4899','#84cc16','#f97316','#a855f7','#14b8a6'];
+var pending=null;
+var activeFilters=null; // null = alles; anders array van thema's
+var allTodos=[];
+
+function slugify(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}
+
+var colorMap={};
+function themeInfo(t){
+  if(BASE[t])return BASE[t];
+  return {label:t.length<=3?t.toUpperCase():t.charAt(0).toUpperCase()+t.slice(1),color:colorMap[t]||'#3b82f6',client:true};
+}
+function themeSortKey(t){if(themeInfo(t).client)return '1'+t;return '2'+({capgemini:'a',prive:'b',kerk:'c'}[t]||t)}
+function currentThemes(){
+  var seen={},out=[];
+  allTodos.forEach(function(t){if(!seen[t.theme]){seen[t.theme]=1;out.push(t.theme)}});
+  out.sort(function(a,b){return themeSortKey(a)<themeSortKey(b)?-1:1});
+  var idx=0;colorMap={};
+  out.forEach(function(k){if(!BASE[k]){colorMap[k]=CLIENTCOLORS[idx%CLIENTCOLORS.length];idx++}});
+  return out;
+}
+
+function stripTime(d){var x=new Date(d);x.setHours(0,0,0,0);return x}
+function addDays(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
+function monday(d){var x=stripTime(d);var w=(x.getDay()+6)%7;return addDays(x,-w)}
+function fmt(d){if(!d)return '';return d.getDate()+'-'+(d.getMonth()+1)+'-'+d.getFullYear()}
+function esc(s){var d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML}
+function taal(n){return n==1?'1 taak':n+' taken'}
+
+function classify(t){
+  var d=t.deadline?new Date(t.deadline+'T00:00'):(t.earliest_start?new Date(t.earliest_start+'T00:00'):null);
+  if(!d)return 'today';
+  var now=stripTime(new Date());
+  if(d<=now)return 'today';
+  var mon=monday(now);
+  if(d<addDays(mon,7))return 'week';
+  if(d<addDays(mon,14))return 'next';
+  return 'later';
+}
+
+function visible(t){return !activeFilters||activeFilters.indexOf(t.theme)>=0}
+
+function dateRow(t){
+  var parts=[];
+  if(t.earliest_start)parts.push('vanaf '+fmt(new Date(t.earliest_start+'T00:00')));
+  if(t.deadline){
+    var od=new Date(t.deadline+'T00:00')<stripTime(new Date());
+    parts.push((od?'<span class="overdue">&#9888; over deadline ':'uiterlijk ')+fmt(new Date(t.deadline+'T00:00'))+(od?'</span>':''));
+  }
+  return parts.length?'<div class="row">'+parts.join(' &middot; ')+'</div>':'';
+}
+
+function card(t){
+  var th=themeInfo(t.theme);
+  var c=document.createElement('div');c.className='card';c.style.borderLeftColor=th.color;c.id='card-'+t.id;
+  c.innerHTML='<div class="desc">'+esc(t.description)+'</div><div class="row">'
+   +'<span class="chip" style="background:'+th.color+'22;color:'+th.color+'">'+th.label+'</span>'
+   +(t.people?'<span>&#128101; '+esc(t.people)+'</span>':'')
+   +'<span>&#9201; '+(t.duration_minutes>=120?(t.duration_minutes/60)+' uur':t.duration_minutes+' min')+'</span>'
+   +'</div>'
+   +dateRow(t)
+   +'<div class="row"><button class="btn" onclick="doneTodo(\''+t.id+'\')">&#10003; Afvinken</button>'
+   +'<button class="btn" onclick="editTodo(\''+t.id+'\')">&#9998; Bewerken</button>'
+   +(t.duration_minutes>=60?'<button class="btn" onclick="splitTodo(\''+t.id+'\')">&#9986; Breek op</button>':'')
+   +'<button class="btn" onclick="delTodo(\''+t.id+'\')">&#128465; Verwijderen</button></div>';
+  return c;
+}
+
+function renderFilters(){
+  var el=document.getElementById('filters');el.innerHTML='';
+  var b=document.createElement('button');b.type='button';
+  b.className='filterbtn'+(activeFilters===null?' on':'');
+  b.textContent='Alles';
+  b.onclick=function(){activeFilters=null;renderFilters();render()};
+  el.appendChild(b);
+  currentThemes().forEach(function(k){
+    var th=themeInfo(k);
+    var fb=document.createElement('button');fb.type='button';
+    fb.className='filterbtn'+(activeFilters&&activeFilters.indexOf(k)>=0?' on':'');
+    fb.textContent=th.label;
+    fb.style.color=th.color;
+    fb.onclick=function(){
+      if(!activeFilters)activeFilters=[k];
+      else if(activeFilters.indexOf(k)>=0){activeFilters=activeFilters.filter(function(x){return x!=k});if(!activeFilters.length)activeFilters=null;}
+      else activeFilters=activeFilters.concat([k]);
+      renderFilters();render();
+    };
+    el.appendChild(fb);
+  });
+}
+
+function themeSelectHtml(id,selected){
+  var opts='<option value="">Thema&hellip;</option>';
+  currentThemes().forEach(function(k){
+    var th=themeInfo(k);
+    opts+='<option value="'+k+'"'+(k===selected?' selected':'')+'>'+th.label+(th.client?' (client)':'')+'</option>';
+  });
+  opts+='<option value="new"'+(selected==='new'?' selected':'')+'>&#10133; Nieuw thema&hellip;</option>';
+  return '<select id="'+id+'" class="small" style="width:100%">'+opts+'</select>';
+}
+
+function render(){
+  var buckets={today:[],week:[],next:[],later:[]};
+  allTodos.forEach(function(t){if(visible(t))buckets[classify(t)].push(t)});
+  ['today','week','next','later'].forEach(function(k){
+    var el=document.getElementById('b-'+k);el.innerHTML='';
+    document.getElementById('cnt-'+k).textContent=taal(buckets[k].length);
+    if(!buckets[k].length){el.innerHTML='<div class="empty">Niets &mdash; geniet van de rust.</div>';return}
+    buckets[k].sort(function(a,b){
+      var ka=themeSortKey(a.theme),kb=themeSortKey(b.theme);
+      if(ka!=kb)return ka<kb?-1:1;
+      return (a.deadline||'9999')<(b.deadline||'9999')?-1:1;});
+    buckets[k].forEach(function(t){el.appendChild(card(t))});
+  });
+}
+
+function coachMsg(html,cls,tasks){
+  var m=document.createElement('div');m.className='msg bot sess'+(cls?' '+cls:'');
+  m.innerHTML=html;
+  if(tasks&&tasks.length){
+    tasks.forEach(function(t){
+      var a=document.createElement('span');a.className='tasklink';a.textContent='» '+t.description.slice(0,40)+(t.description.length>40?'…':'');
+      a.onclick=function(){jumpTo(t.id)};
+      m.appendChild(document.createElement('br'));
+      m.appendChild(a);
+    });
+  }
+  var log=document.getElementById('coachlog');
+  log.insertBefore(m,document.getElementById('chatstart'));
+  log.scrollTop=log.scrollHeight;
+}
+function chatMsg(html,cls){var m=document.createElement('div');m.className='msg bot chat'+(cls?' '+cls:'');m.innerHTML=html;var log=document.getElementById('coachlog');log.insertBefore(m,document.getElementById('chatstart'));log.scrollTop=log.scrollHeight;return m}
+function userMsg(txt){var m=document.createElement('div');m.className='msg user chat';m.textContent=txt;var log=document.getElementById('coachlog');log.insertBefore(m,document.getElementById('chatstart'));log.scrollTop=log.scrollHeight}
+
+function jumpTo(id){
+  var el=document.getElementById('card-'+id);
+  if(!el)return;
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');
+}
+
+function coach(){
+  [].forEach.call(document.querySelectorAll('#coachlog .sess'),function(e){e.remove()});
+  var now=stripTime(new Date());
+  var open=allTodos.filter(function(t){return t.status=='open'});
+  var quick=open.filter(function(t){return t.duration_minutes<=10&&(!t.earliest_start||new Date(t.earliest_start+'T00:00')<=now)});
+  var lingering=open.filter(function(t){return t.duration_minutes>=90&&(now-new Date(t.created_at))/864e5>14});
+  var overdue=open.filter(function(t){return t.deadline&&new Date(t.deadline+'T00:00')<now});
+  if(quick.length)coachMsg('&#9889; Je hebt '+taal(quick.length).replace('1 taak','1 klusje')+' van hooguit 10 minuten: <b>doe die nú even</b>, dan zijn ze weg.',null,quick);
+  if(overdue.length)coachMsg('&#9888; '+taal(overdue.length)+' over de deadline. Herschik ze vandaag of schrap ze.','warn',overdue);
+  if(lingering.length)coachMsg('&#128170; '+taal(lingering.length)+' liggen al meer dan twee weken te wachten. Klik op <b>&#9986; Breek op</b> om ze in hapklare delen te splitsen.','warn',lingering);
+  var dow=(now.getDay()+6)%7; // 0=maandag ... 6=zondag
+  var dagenResterend=dow<5?(5-dow):1; // ma 5 ... vr 1, weekend 1
+  var weekMax=5*dagenResterend;
+  var weekOpen=open.filter(function(t){var c=classify(t);return c=='today'||c=='week'});
+  if(weekOpen.length>weekMax)coachMsg('&#128230; Je hebt <b>'+weekOpen.length+'</b> taken open voor deze week (inclusief vandaag), terwijl het maximum nu <b>'+weekMax+'</b> is (5 per resterende werkdag). Schrap, delegeer of stel uit wat niet hoeft.','warn');
+  if(!quick.length&&!overdue.length&&!lingering.length&&weekOpen.length<=weekMax)coachMsg('&#128077; Prima lijst: '+taal(weekOpen.length)+' voor deze week, niets over deadline. Ga zo door!');
+}
+
+function fillThemeSelect(){
+  var sel=document.getElementById('f-theme');
+  var cur=sel.value;
+  sel.innerHTML=themeSelectHtml('f-theme',cur==='new'?null:cur).replace(/^<select[^>]*>|<\/select>$/g,'');
+}
+
+function askNewTheme(){
+  var name=prompt('Naam van het nieuwe thema (bijv. NS):');
+  if(!name)return null;
+  var slug=slugify(name);
+  if(!slug){alert('Die naam kan niet als thema gebruikt worden.');return null}
+  if(BASE[slug]||currentThemes().indexOf(slug)>=0){alert('"'+name+'" bestaat al als thema.');return slug}
+  return slug;
+}
+
+async function load(){
+  var d=new Date();var days=['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  document.getElementById('todayline').textContent=days[d.getDay()]+' '+d.getDate()+'-'+(d.getMonth()+1)+'-'+d.getFullYear();
+  var r=await db.from('todos').select('*').eq('status','open').order('deadline',{ascending:true,nullsFirst:false});
+  if(r.error){chatMsg('Kon taken niet laden: '+esc(r.error.message),'warn');return}
+  allTodos=r.data;
+  if(activeFilters){
+    var avail=currentThemes();
+    activeFilters=activeFilters.filter(function(k){return avail.indexOf(k)>=0});
+    if(!activeFilters.length)activeFilters=null;
+  }
+  fillThemeSelect();
+  renderFilters();
+  render();
+  coach();
+}
+
+async function doneTodo(id){
+  await db.from('todos').update({status:'done',updated_at:new Date().toISOString()}).eq('id',id);
+  load();
+}
+async function delTodo(id){
+  var t=allTodos.find(function(x){return x.id==id});
+  if(confirm('"' +(t?t.description:id)+ '" definitief verwijderen?\n\nKies Afvinken als de taak af is; verwijderen haalt hem er definitief uit.')){
+    await db.from('todos').delete().eq('id',id);load();
+  }
+}
+
+async function splitTodo(id){
+  var t=allTodos.find(function(x){return x.id==id});
+  if(!t)return;
+  if(!confirm('"'+t.description+'" wordt opgesplitst in 3 delen van ongeveer '+Math.ceil(t.duration_minutes/3)+' min. Doorgaan?'))return;
+  var parts=['deel 1: voorbereiden','deel 2: uitvoeren','deel 3: afronden'];
+  for(var i=0;i<parts.length;i++){
+    await db.from('todos').insert({theme:t.theme,description:t.description+' \u2014 '+parts[i],people:t.people,earliest_start:t.earliest_start,deadline:t.deadline,duration_minutes:Math.ceil(t.duration_minutes/3)});
+  }
+  await db.from('todos').delete().eq('id',id);
+  load();
+}
+
+function editTodo(id){
+  var t=allTodos.find(function(x){return x.id==id});
+  if(!t)return;
+  var el=document.getElementById('card-'+id);
+  el.innerHTML='<div class="editform">'
+   +'<div><label class="f">Beschrijving</label><input id="e-desc" value="'+esc(t.description)+'"></div>'
+   +'<div><label class="f">Thema</label>'+themeSelectHtml('e-theme',t.theme)+'</div>'
+   +'<div><label class="f">Met/voor wie</label><input id="e-people" value="'+esc(t.people||'')+'"></div>'
+   +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+   +'<div><label class="f">Vroegste start</label><input type="text" id="e-start" placeholder="dd-mm of dd-mm-jjjj" value="'+toNL(t.earliest_start)+'"></div>'
+   +'<div><label class="f">Deadline</label><input type="text" id="e-deadline" placeholder="dd-mm of dd-mm-jjjj" value="'+toNL(t.deadline)+'"></div>'
+   +'<div><label class="f">Duur (min)</label><input type="number" id="e-duration" min="5" step="5" value="'+t.duration_minutes+'"></div>'
+   +'</div>'
+   +'<div class="btnrow"><button class="btn main" onclick="saveTodo(\''+id+'\')">Opslaan</button>'
+   +'<button class="btn" onclick="render()">Annuleren</button></div>'
+   +'</div>';
+  attachCal(document.getElementById('e-start'));
+  attachCal(document.getElementById('e-deadline'));
+}
+
+async function saveTodo(id){
+  var theme=document.getElementById('e-theme').value;
+  if(theme==='new'){theme=askNewTheme();if(!theme)return;}
+  if(!theme){alert('Kies een thema.');return}
+  var eStart=parseFieldDate(document.getElementById('e-start').value.trim(),'vroegste start');
+  if(eStart==='invalid')return;
+  var eDeadline=parseFieldDate(document.getElementById('e-deadline').value.trim(),'deadline');
+  if(eDeadline==='invalid')return;
+  var upd={
+    description:document.getElementById('e-desc').value.trim(),
+    theme:theme,
+    people:document.getElementById('e-people').value.trim()||null,
+    earliest_start:eStart,
+    deadline:eDeadline,
+    duration_minutes:parseInt(document.getElementById('e-duration').value,10)||30,
+    updated_at:new Date().toISOString()
+  };
+  if(!upd.description){alert('Vul een beschrijving in.');return}
+  await db.from('todos').update(upd).eq('id',id);
+  load();
+}
+
+function parseDate(s){
+  if(!s)return null;var t=stripTime(new Date());
+  s=s.toLowerCase().trim();
+  if(s=='vandaag')return t;
+  if(s=='morgen')return addDays(t,1);
+  if(s=='overmorgen')return addDays(t,2);
+  var m=s.match(/^(\d{1,2})-(\d{1,2})(?:-(\d{2,4}))?$/);
+  if(m){
+    var day=+m[1],mon=+m[2];
+    if(mon<1||mon>12||day<1||day>31)return null;
+    var y=m[3]?(m[3].length==2?2000+ +m[3]:+m[3]):t.getFullYear();
+    var d=new Date(y,mon-1,day);
+    if(d.getMonth()!=mon-1||d.getDate()!=day)return null;
+    if(m[3]||d>=t)return d;
+    return null;
+  }
+  m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m){
+    var d2=new Date(+m[1],+m[2]-1,+m[3]);
+    if(d2.getMonth()!=+m[2]-1||d2.getDate()!=+m[3])return null;
+    return d2;
+  }
+  var days=['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  m=s.match(/^volgende week (\w+)$/);
+  var base=monday(t);
+  if(m){var i=days.indexOf(m[1]);if(i>=0)return addDays(base,7+((i+6)%7));}
+  m=s.match(/^(\w+)$/);
+  if(m){var j=days.indexOf(m[1]);if(j>=0){var delta=(j-t.getDay()+7)%7;if(delta==0)delta=7;return addDays(t,delta)}}
+  return null;
+}
+
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+
+function toNL(isoStr){if(!isoStr)return '';var p=isoStr.split('-');return p[2]+'-'+p[1]+'-'+p[0]}
+function parseFieldDate(v,label){
+  if(!v)return null;
+  var d=parseDate(v);
+  if(!d){alert('"'+v+'" is geen herkenbare datum voor '+label+'. Gebruik dd-mm of dd-mm-jjjj.');return 'invalid'}
+  return iso(d);
+}
+
+// ---------- uitklapkalendertje ----------
+var calEl=null,calInput=null,calView=null;
+var CALMONTHS=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+function closeCal(){if(calEl){calEl.remove();calEl=null;calInput=null;calView=null}}
+function renderCal(){
+  var val=parseDate(calInput.value.trim());
+  var today=stripTime(new Date());
+  if(!calView)calView=val||today;
+  var y=calView.getFullYear(),mo=calView.getMonth();
+  calEl.innerHTML='';
+  var head=document.createElement('div');head.className='head';
+  var prev=document.createElement('button');prev.innerHTML='&#8249;';
+  prev.onclick=function(e){e.stopPropagation();calView=new Date(y,mo-1,1);renderCal()};
+  var lbl=document.createElement('b');lbl.textContent=CALMONTHS[mo]+' '+y;
+  var next=document.createElement('button');next.innerHTML='&#8250;';
+  next.onclick=function(e){e.stopPropagation();calView=new Date(y,mo+1,1);renderCal()};
+  head.appendChild(prev);head.appendChild(lbl);head.appendChild(next);
+  calEl.appendChild(head);
+  var tbl=document.createElement('table');
+  var trh=document.createElement('tr');
+  ['ma','di','wo','do','vr','za','zo'].forEach(function(d){var th=document.createElement('th');th.textContent=d;trh.appendChild(th)});
+  tbl.appendChild(trh);
+  var startw=(new Date(y,mo,1).getDay()+6)%7;
+  var dim=new Date(y,mo+1,0).getDate();
+  var tr=document.createElement('tr');
+  for(var i=0;i<startw;i++){tr.appendChild(document.createElement('td'))}
+  for(var day=1;day<=dim;day++){
+    var td=document.createElement('td');
+    var d=new Date(y,mo,day);
+    if(stripTime(d).getTime()===today.getTime())td.className='today';
+    if(val&&stripTime(d).getTime()===val.getTime())td.className+=(td.className?' ':'')+'sel';
+    var a=document.createElement('a');a.textContent=day;
+    a.onclick=(function(dd){return function(){
+      calInput.value=dd.getDate()+'-'+(dd.getMonth()+1)+'-'+dd.getFullYear();
+      closeCal();calInput.focus();
+    }})(d);
+    td.appendChild(a);
+    tr.appendChild(td);
+    if((startw+day)%7===0){tbl.appendChild(tr);tr=document.createElement('tr')}
+  }
+  if(tr.childNodes.length)tbl.appendChild(tr);
+  calEl.appendChild(tbl);
+  var tl=document.createElement('div');tl.className='todaylabel';
+  tl.innerHTML='vandaag: <span>'+today.getDate()+'-'+(today.getMonth()+1)+'-'+today.getFullYear()+'</span>';
+  tl.querySelector('span').onclick=function(){
+    calInput.value=today.getDate()+'-'+(today.getMonth()+1)+'-'+today.getFullYear();
+    closeCal();calInput.focus();
+  };
+  calEl.appendChild(tl);
+}
+function openCal(input){
+  if(calInput===input&&calEl){closeCal();return}
+  closeCal();
+  calInput=input;
+  calEl=document.createElement('div');calEl.className='cal';
+  calEl.addEventListener('click',function(e){e.stopPropagation()});
+  document.body.appendChild(calEl);
+  renderCal();
+  var r=input.getBoundingClientRect();
+  var left=Math.min(r.left,window.innerWidth-250);
+  var top=r.bottom+4;
+  if(top+270>window.innerHeight)top=Math.max(4,r.top-270);
+  calEl.style.left=Math.max(4,left)+'px';
+  calEl.style.top=top+'px';
+}
+function attachCal(input){input.addEventListener('click',function(e){e.stopPropagation();openCal(input)})}
+document.addEventListener('click',function(){closeCal()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCal()});
+
+// ---------- AI-coach (Mistral API) ----------
+var aiHistory=[];
+
+function todoJson(){
+  return allTodos.map(function(t){return {id:t.id,thema:t.theme,taak:t.description,persoon:t.people||undefined,vanaf:t.earliest_start||undefined,deadline:t.deadline||undefined,minuten:t.duration_minutes};});
+}
+
+function coachSystem(){
+  var nu=new Date();
+  var d=nu.getDate()+'-'+(nu.getMonth()+1)+'-'+nu.getFullYear();
+  var themes=currentThemes().map(function(k){return k+(themeInfo(k).client?' (client)':'')}).join(', ');
+  return 'Je bent de persoonlijke coach van Jeroen op zijn browser-startpagina. Vandaag is '+d+'.\n'
+  +'Thema\u2019s: '+themes+'.\n'
+  +'Openstaande taken (JSON): '+JSON.stringify(todoJson())+'\n\n'
+  +'Regels:\n'
+  +'- Antwoord in het Nederlands, beknopt en concreet.\n'
+  +'- Een klusje van 10 minuten of minder: dring aan om het NU even te doen.\n'
+  +'- Grote taken (90+ minuten) die al langer dan twee weken open staan: stel voor om te splitsen (split_todo).\n'
+  +'- Houd de lijst kort: stel voor te schrappen, te delegeren of uit te stellen.\n'
+  +'- Taken over de deadline: geef die prioriteit.\n'
+  +'- Als de gebruiker een taak noemt of iets wil wijzigen, gebruik dan direct de juiste tool in plaats van het alleen te beschrijven.\n'
+  +'- Datums in tools altijd ISO (jjjj-mm-dd); in je antwoorden dd-mm-jjjj.\n'
+  +'- Je ziet alleen openstaande taken; afgevinkte taken zijn uit het zicht.';
+}
+
+var COACHTOOLS=[
+ {type:'function',function:{name:'add_todo',description:'Voegt een nieuwe todo toe aan Jeroens lijst.',parameters:{type:'object',properties:{theme:{type:'string',description:'thema-slug, bijv. eneco, action, frieslandcampina, ns, capgemini, prive, kerk'},description:{type:'string'},people:{type:'string'},earliest_start:{type:'string',description:'ISO-datum jjjj-mm-dd'},deadline:{type:'string',description:'ISO-datum jjjj-mm-dd'},duration_minutes:{type:'integer'}},required:['theme','description']}}},
+ {type:'function',function:{name:'update_todo',description:'Wijzigt een bestaande todo; zoek met een deel van de beschrijving.',parameters:{type:'object',properties:{query:{type:'string',description:'deel van de beschrijving om de taak te vinden'},description:{type:'string'},people:{type:'string'},earliest_start:{type:'string'},deadline:{type:'string'},duration_minutes:{type:'integer'},theme:{type:'string'}},required:['query']}}},
+ {type:'function',function:{name:'complete_todo',description:'Vinkt een todo af.',parameters:{type:'object',properties:{query:{type:'string'}},required:['query']}}},
+ {type:'function',function:{name:'delete_todo',description:'Verwijdert een todo definitief.',parameters:{type:'object',properties:{query:{type:'string'}},required:['query']}}},
+ {type:'function',function:{name:'split_todo',description:'Splitst een grote todo in 3 delen (voorbereiden/uitvoeren/afronden).',parameters:{type:'object',properties:{query:{type:'string'}},required:['query']}}}
+];
+
+function findTodo(query){
+  var q=(query||'').toLowerCase().trim();
+  return allTodos.find(function(t){return q&&t.description.toLowerCase().indexOf(q)>=0})||null;
+}
+
+async function execCoachTool(name,args){
+  if(name==='add_todo'){
+    if(!args.theme||!args.description)return 'Fout: theme en description zijn verplicht.';
+    var ins={theme:slugify(args.theme)||args.theme,description:args.description,people:args.people||null,earliest_start:args.earliest_start||null,deadline:args.deadline||null,duration_minutes:args.duration_minutes||30};
+    var r=await db.from('todos').insert(ins);if(r.error)return 'Fout: '+r.error.message;
+    return 'Toegevoegd onder "'+ins.theme+'": "'+ins.description+'".';
+  }
+  var t=findTodo(args.query);
+  if(!t)return 'Geen openstaande taak gevonden die past bij "'+(args.query||'')+'".';
+  if(name==='complete_todo'){await db.from('todos').update({status:'done',updated_at:new Date().toISOString()}).eq('id',t.id);return '"'+t.description+'" is afgevinkt.'}
+  if(name==='delete_todo'){await db.from('todos').delete().eq('id',t.id);return '"'+t.description+'" is verwijderd.'}
+  if(name==='split_todo'){
+    var parts=['deel 1: voorbereiden','deel 2: uitvoeren','deel 3: afronden'];
+    for(var i=0;i<parts.length;i++)await db.from('todos').insert({theme:t.theme,description:t.description+' \u2014 '+parts[i],people:t.people,earliest_start:t.earliest_start,deadline:t.deadline,duration_minutes:Math.ceil(t.duration_minutes/3)});
+    await db.from('todos').delete().eq('id',t.id);
+    return '"'+t.description+'" is opgesplitst in 3 delen.';
+  }
+  if(name==='update_todo'){
+    var upd={updated_at:new Date().toISOString()};
+    ['description','people','earliest_start','deadline'].forEach(function(k){if(args[k]!==undefined)upd[k]=args[k]===null?null:(args[k]||null)});
+    if(args.duration_minutes!==undefined)upd.duration_minutes=args.duration_minutes||30;
+    if(args.theme!==undefined)upd.theme=slugify(args.theme)||args.theme;
+    var r2=await db.from('todos').update(upd).eq('id',t.id);if(r2.error)return 'Fout: '+r2.error.message;
+    return '"'+t.description+'" is gewijzigd.';
+  }
+  return 'Onbekende tool.';
+}
+
+var MISTRAL_RELAY='https://gspuzicxsgrywnuwdttv.supabase.co/functions/v1/coach-f32b301f?k=9cd435a4205f482172c495a6';
+async function callMistral(key,messages,tools){
+  var r;
+  try{
+    r=await fetch(MISTRAL_RELAY,{
+      method:'POST',
+      headers:{'x-mistral-key':key,'Content-Type':'application/json'},
+      body:JSON.stringify({model:'mistral-small-latest',messages:messages,tools:tools,tool_choice:'auto'})
+    });
+  }catch(e){
+    throw new Error('Kon de coach-relais (Supabase) niet bereiken (netwerkfout: '+e.message+'). Check je internetverbinding.');
+  }
+  var data;
+  try{data=await r.json()}catch(e){throw new Error('Ongeldig antwoord van api.mistral.ai (HTTP '+r.status+')')}
+  if(!r.ok)throw new Error(data.message||('HTTP '+r.status));
+  return data;
+}
+
+async function handleChat(text){
+  userMsg(text);
+  var busy=chatMsg('&#8987; n even nadenken\u2026');
+  var key=localStorage.getItem('mistral_api_key');
+  if(!key){
+    key=(prompt('Voer je Mistral API-key in (aan te maken op console.mistral.ai). Hij wordt alleen lokaal in je browser opgeslagen:')||'').trim();
+    if(!key){busy.remove();chatMsg('Zonder API-key kan de coach niet antwoorden. Klik op \u2699\ufe0f API-key om hem later in te voeren.','warn');return}
+    localStorage.setItem('mistral_api_key',key);
+  }
+  var messages=[{role:'system',content:coachSystem()}].concat(aiHistory.slice(-16),[{role:'user',content:text}]);
+  try{
+    for(var round=0;round<5;round++){
+      var data=await callMistral(key,messages,COACHTOOLS);
+      var msg=data.choices[0].message;
+      messages.push(msg);
+      if(msg.tool_calls&&msg.tool_calls.length){
+        for(var i=0;i<msg.tool_calls.length;i++){
+          var tc=msg.tool_calls[i];
+          var args={};try{args=JSON.parse(tc.function.arguments||'{}')}catch(e){}
+          var res;
+          try{res=await execCoachTool(tc.function.name,args)}
+          catch(e){throw new Error('De actie "'+tc.function.name+'" op Supabase mislukte (netwerkfout: '+e.message+').')}
+          messages.push({role:'tool',tool_call_id:tc.id,name:tc.function.name,content:res});
+        }
+        continue;
+      }
+      busy.remove();
+      var antw=(msg.content||'').trim()||'Klaar.';
+      chatMsg(antw);
+      aiHistory.push({role:'user',content:text},{role:'assistant',content:antw});
+      if(aiHistory.length>20)aiHistory=aiHistory.slice(-20);
+      load();
+      return;
+    }
+    busy.remove();
+    chatMsg('De coach kon het niet afronden; probeer het opnieuw of deel je vraag op.','warn');
+  }catch(e){
+    busy.remove();
+    if(/401|unauthorized/i.test(e.message||'')){localStorage.removeItem('mistral_api_key');chatMsg('De API-key werd niet geaccepteerd. Klik op \u2699\ufe0f API-key en controleer hem.','warn')}
+    else chatMsg('Fout bij het aanroepen van de coach: '+esc(e.message),'warn');
+  }
+}
+
+document.getElementById('keybtn').addEventListener('click',function(){
+  var cur=localStorage.getItem('mistral_api_key')||'';
+  var k=(prompt('Mistral API-key (console.mistral.ai). Leeg maken = key wissen. Wordt alleen lokaal in je browser opgeslagen:',cur)||'').trim();
+  if(k)localStorage.setItem('mistral_api_key',k);else localStorage.removeItem('mistral_api_key');
+});
+
+document.getElementById('newform').addEventListener('submit',async function(e){
+  e.preventDefault();
+  var theme=document.getElementById('f-theme').value;
+  if(theme==='new'){theme=askNewTheme();if(!theme)return;}
+  if(!theme){alert('Kies een thema.');return}
+  var desc=document.getElementById('f-desc').value.trim();
+  if(!desc){alert('Vul een beschrijving in.');return}
+  var fStart=parseFieldDate(document.getElementById('f-start').value.trim(),'vroegste start');
+  if(fStart==='invalid')return;
+  var fDeadline=parseFieldDate(document.getElementById('f-deadline').value.trim(),'deadline');
+  if(fDeadline==='invalid')return;
+  await db.from('todos').insert({
+    theme:theme,
+    description:desc,
+    people:document.getElementById('f-people').value.trim()||null,
+    earliest_start:fStart,
+    deadline:fDeadline,
+    duration_minutes:parseInt(document.getElementById('f-duration').value,10)||30
+  });
+  this.reset();
+  document.getElementById('f-duration').value=30;
+  document.getElementById('f-start').value=toNL(iso(stripTime(new Date())));
+  load();
+});
+
+document.getElementById('chatform').addEventListener('submit',function(e){
+  e.preventDefault();var i=document.getElementById('chatinput');if(!i.value.trim())return;handleChat(i.value.trim());i.value='';
+});
+
+var chatstart=document.createElement('div');chatstart.id='chatstart';
+document.getElementById('coachlog').appendChild(chatstart);
+
+// ---------- per week wisselend Zwitsers berglandschap ----------
+function isoWeek(d){
+  var x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  x.setUTCDate(x.getUTCDate()+4-(x.getUTCDay()||7));
+  var y=new Date(Date.UTC(x.getUTCFullYear(),0,1));
+  return Math.ceil(((x-y)/864e5+1)/7);
+}
+// Rechtenvrije Pexels-foto per ISO-week (rotatie, hardcoded lijst — geen API-key nodig)
+var BGPHOTOS=[
+ {id:34158598,f:'Adrian Limani'},{id:35309605,f:'Jean-Paul Wettstein'},{id:29698793,f:'Jean-Paul Wettstein'},
+ {id:31952731,f:'Christopher Politano'},{id:13128330,f:'Balazs Simon'},{id:34110182,f:'Jean-Paul Wettstein'},
+ {id:13916411,f:'allPhoto Bangkok'},{id:31499114,f:'Jean-Paul Wettstein'},{id:15246096,f:'Travid Vid Legradic'},
+ {id:27436135,f:'Nanda Gopal Lakshman'},{id:29734959,f:'Ilia Bronskiy'},{id:19848254,f:'woo ski'},
+ {id:29734975,f:'Ilia Bronskiy'},{id:32496418,f:'Jean-Paul Wettstein'},{id:32658872,f:'Jordi Costa Tomé'},
+ {id:2444429,f:'Chris Czermak'},{id:34530883,f:'Valentina Maggiulli'},{id:38412644,f:'Christopher Politano'},
+ {id:11338350,f:'Alex Niemczyk'},{id:11917552,f:'Ryan Klaus'},{id:27436130,f:'Nanda Gopal Lakshman'},
+ {id:34192223,f:'Oskar Gross'}
+];
+(function drawBackground(){
+  var week=isoWeek(new Date());
+  var p=BGPHOTOS[(week-1)%BGPHOTOS.length];
+  var url='https://images.pexels.com/photos/'+p.id+'/pexels-photo-'+p.id+'.jpeg?auto=compress&cs=tinysrgb&w=1920';
+  var bg=document.createElement('div');bg.id='bgfoto';bg.style.backgroundImage='url("'+url+'")';
+  document.body.insertBefore(bg,document.body.firstChild);
+  var ov=document.createElement('div');ov.id='bgoverlay';
+  document.body.insertBefore(ov,bg.nextSibling);
+  var wl=document.createElement('div');wl.id='weeklabel';
+  wl.textContent='Zwitsers landschap \u2014 week '+week+' \u00b7 Foto: '+p.f+' / Pexels';
+  document.body.appendChild(wl);
+})();
+
+// ---------- Spraakinput (microfoon) ----------
+(function(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var btn=document.getElementById('micbtn');
+  if(!SR){btn.style.display='none';return}
+  var rec=null,actief=false;
+  btn.addEventListener('click',function(){
+    if(actief&&rec){rec.stop();return}
+    try{
+      rec=new SR();
+      rec.lang='nl-NL';rec.interimResults=false;rec.maxAlternatives=1;rec.continuous=false;
+      actief=true;btn.classList.add('rec');
+      rec.onresult=function(e){
+        var t=e.results[0][0].transcript;
+        var i=document.getElementById('chatinput');
+        i.value=t;
+        var f=document.getElementById('chatform');
+        if(f.requestSubmit)f.requestSubmit();else f.dispatchEvent(new Event('submit',{cancelable:true}));
+      };
+      rec.onend=function(){actief=false;btn.classList.remove('rec')};
+      rec.onerror=function(){actief=false;btn.classList.remove('rec')};
+      rec.start();
+    }catch(e){actief=false;btn.classList.remove('rec');alert('Kon de microfoon niet starten: '+e.message)}
+  });
+})();
+attachCal(document.getElementById('f-start'));
+attachCal(document.getElementById('f-deadline'));
+document.getElementById('f-start').value=toNL(iso(stripTime(new Date())));
+
+load();
+setInterval(load,5*60*1000);
+</script>
+</body>
+</html>
