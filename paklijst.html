@@ -123,7 +123,8 @@
 <script>
 (function(){
   "use strict";
-  var SLEUTEL = "paklijst.state.v2";
+  var SLEUTEL = "paklijst.state.v3";
+  var SLEUTEL_V2 = "paklijst.state.v2";
   var SLEUTEL_OUD = "paklijst.state.v1";
 
   var SECTIES = [
@@ -132,6 +133,9 @@
       "Sokken",
       "Hemden",
       "Broeken, korte broeken",
+      "Overhemden",
+      "Polo's",
+      "Riem(en)",
       "Trui of vest",
       "(Regen)jas",
       "Zwemkleding",
@@ -139,15 +143,15 @@
       "Wandelschoenen"
     ]},
     { id:"militaire-kleding", titel:"Militaire kleding", items:[
-      "twee keer BT",
-      "Werk-/daily-wear tenue",
+      "Twee keer BT",
       "Colletje",
       "Regenpak",
       "Baret",
       "Handschoenen",
       "DT: Pak, wit overhemd, stropdas",
       "DT Schoenen",
-      "Kisten"
+      "Kisten",
+      "Elastiekjes voor broekspijpen"
     ]},
     { id:"toiletartikelen", titel:"Toiletartikelen", items:[
       "Tandenborstel en tandpasta",
@@ -159,12 +163,13 @@
     ]},
     { id:"militaire-accessoires", titel:"Militaire accessoires", items:[
       "Rugzak of reistas",
-      "Veldfles",
+      "Veldfles of waterzak",
       "Horloge",
       "Zaklamp of koplamp",
       "Mes of multitool",
       "Notitieboekje en pen",
-      "Powerbank",
+      "Handdoeken",
+      "Waszak",
       "Defensiepas",
       "Oproep- / reservistenpapieren"
     ]},
@@ -183,7 +188,9 @@
       "Boek of e-reader",
       "Hoofdtelefoon",
       "EHBO-setje",
-      "Zonnebril"
+      "Zonnebril",
+      "Powerbank",
+      "Laptop of tablet + oplader"
     ]}
   ];
 
@@ -253,33 +260,35 @@
     ]
   };
 
-  function itemId(sectieId, label){ return sectieId + "#" + label; }
+  function itemId(label){ return label; }
 
   function migreer(){
-    var oud = null;
-    try{ oud = JSON.parse(localStorage.getItem(SLEUTEL_OUD)); }catch(e){}
-    if(!oud || typeof oud !== "object" || !oud.checked) return null;
-    var nieuw = { checked:{}, open:(oud.open && typeof oud.open === "object") ? oud.open : {} };
-    Object.keys(oud.checked).forEach(function(oldId){
-      var k = oldId.lastIndexOf("-");
-      if(k < 0) return;
-      var sid = oldId.slice(0, k);
-      var i = parseInt(oldId.slice(k + 1), 10);
-      var labels = OUDE_LIJSTEN[sid];
-      if(!labels || isNaN(i) || labels[i] == null) return;
-      var label = labels[i];
-      for(var j = 0; j < SECTIES.length; j++){
-        if(SECTIES[j].items.indexOf(label) !== -1){
-          nieuw.checked[itemId(SECTIES[j].id, label)] = true;
-          break;
-        }
-      }
-    });
-    try{
-      localStorage.setItem(SLEUTEL, JSON.stringify(nieuw));
-      localStorage.removeItem(SLEUTEL_OUD);
-    }catch(e){}
-    return nieuw;
+    var v2 = null, v1 = null;
+    try{ v2 = JSON.parse(localStorage.getItem(SLEUTEL_V2)); }catch(e){}
+    try{ v1 = JSON.parse(localStorage.getItem(SLEUTEL_OUD)); }catch(e){}
+    var open = {}, checked = {};
+    if(v2 && typeof v2 === "object"){
+      if(v2.open && typeof v2.open === "object") open = v2.open;
+      Object.keys(v2.checked || {}).forEach(function(k){
+        var i = k.indexOf("#");
+        checked[i !== -1 ? k.slice(i + 1) : k] = true;
+      });
+    }else if(v1 && typeof v1 === "object"){
+      if(v1.open && typeof v1.open === "object") open = v1.open;
+      Object.keys(v1.checked || {}).forEach(function(oldId){
+        var k = oldId.lastIndexOf("-");
+        if(k < 0) return;
+        var labels = OUDE_LIJSTEN[oldId.slice(0, k)];
+        var i = parseInt(oldId.slice(k + 1), 10);
+        if(labels && !isNaN(i) && labels[i] != null) checked[labels[i]] = true;
+      });
+    }else{
+      return null;
+    }
+    var state = { checked:checked, open:open };
+    schrijfState(state);
+    try{ localStorage.removeItem(SLEUTEL_V2); localStorage.removeItem(SLEUTEL_OUD); }catch(e){}
+    return state;
   }
 
   function leesState(){
@@ -332,7 +341,7 @@
       var ul = document.createElement("div");
       ul.className = "sectie-lijst";
       s.items.forEach(function(label, i){
-        var id = itemId(s.id, label);
+        var id = itemId(label);
         var row = document.createElement("label");
         row.className = "item";
         var cb = document.createElement("input");
@@ -365,7 +374,7 @@
     var tellingen = {};
     SECTIES.forEach(function(s){
       var c = 0;
-      s.items.forEach(function(label){ if(state.checked[itemId(s.id, label)]) c++; });
+      s.items.forEach(function(label){ if(state.checked[itemId(label)]) c++; });
       tellingen[s.id] = c;
       checked += c;
     });
