@@ -123,10 +123,72 @@
 <script>
 (function(){
   "use strict";
-  var SLEUTEL = "paklijst.state.v1";
+  var SLEUTEL = "paklijst.state.v2";
+  var SLEUTEL_OUD = "paklijst.state.v1";
 
   var SECTIES = [
     { id:"gewone-kleding", titel:"Gewone kleding", items:[
+      "Ondergoed (genoeg voor alle dagen + 1 extra)",
+      "Sokken",
+      "Hemden",
+      "Broeken, korte broeken",
+      "Trui of vest",
+      "(Regen)jas",
+      "Zwemkleding",
+      "Comfortabele schoenen (sneakers)",
+      "Wandelschoenen"
+    ]},
+    { id:"militaire-kleding", titel:"Militaire kleding", items:[
+      "twee keer BT",
+      "Werk-/daily-wear tenue",
+      "Colletje",
+      "Regenpak",
+      "Baret",
+      "Handschoenen",
+      "DT: Pak, wit overhemd, stropdas",
+      "DT Schoenen",
+      "Kisten"
+    ]},
+    { id:"toiletartikelen", titel:"Toiletartikelen", items:[
+      "Tandenborstel en tandpasta",
+      "Deodorant",
+      "Scheerapparaat",
+      "Douchegel",
+      "Zonnebrandcrème",
+      "Oordopjes"
+    ]},
+    { id:"militaire-accessoires", titel:"Militaire accessoires", items:[
+      "Rugzak of reistas",
+      "Veldfles",
+      "Horloge",
+      "Zaklamp of koplamp",
+      "Mes of multitool",
+      "Notitieboekje en pen",
+      "Powerbank",
+      "Defensiepas",
+      "Oproep- / reservistenpapieren"
+    ]},
+    { id:"reisbescheiden", titel:"Reisbescheiden", items:[
+      "ID-kaart of paspoort",
+      "Rijbewijs",
+      "Zorgverzekeringspas",
+      "Portemonnee",
+      "Tickets en reserveringsbewijzen"
+    ]},
+    { id:"extras", titel:"Extra's", items:[
+      "Telefoonoplader en kabel",
+      "Reisstekkeradapter (voor het buitenland)",
+      "Snacks voor onderweg",
+      "Waterfles",
+      "Boek of e-reader",
+      "Hoofdtelefoon",
+      "EHBO-setje",
+      "Zonnebril"
+    ]}
+  ];
+
+  var OUDE_LIJSTEN = {
+    "gewone-kleding":[
       "Ondergoed (genoeg voor alle dagen + 1 extra)",
       "Sokken",
       "T-shirts en tops",
@@ -137,8 +199,8 @@
       "Pyjama",
       "Comfortabele schoenen (sneakers)",
       "Wandelschoenen"
-    ]},
-    { id:"militaire-kleding", titel:"Militaire kleding", items:[
+    ],
+    "militaire-kleding":[
       "Compleet OEF-tenue",
       "Werk-/daily-wear tenue",
       "Fleece of warme trui",
@@ -146,8 +208,8 @@
       "Pet, baret of hoed",
       "Handschoenen",
       "Buff of sjaal"
-    ]},
-    { id:"toiletartikelen", titel:"Toiletartikelen", items:[
+    ],
+    "toiletartikelen":[
       "Tandenborstel en tandpasta",
       "Deodorant",
       "Scheerapparaat of mesje",
@@ -156,8 +218,8 @@
       "Kam of borstel",
       "Persoonlijke medicijnen",
       "Pijnstillers en pleisters"
-    ]},
-    { id:"militaire-accessoires", titel:"Militaire accessoires", items:[
+    ],
+    "militaire-accessoires":[
       "Rugzak of reistas",
       "Veldfles",
       "Horloge",
@@ -168,8 +230,8 @@
       "Notitieboekje en pen",
       "Powerbank",
       "Oordopjes"
-    ]},
-    { id:"reisbescheiden", titel:"Reisbescheiden", items:[
+    ],
+    "reisbescheiden":[
       "ID-kaart of paspoort",
       "Rijbewijs",
       "Zorgverzekeringspas",
@@ -178,8 +240,8 @@
       "Tickets en reserveringsbewijzen",
       "Oproep- / reservistenpapieren",
       "Kopieën van documenten (digitaal of papieren)"
-    ]},
-    { id:"extras", titel:"Extra's", items:[
+    ],
+    "extras":[
       "Telefoonoplader en kabel",
       "Reisstekkeradapter (voor het buitenland)",
       "Snacks voor onderweg",
@@ -188,16 +250,45 @@
       "Hoofdtelefoon",
       "Kussen of slaapzak (bij meerdaagse klus)",
       "EHBO-setje"
-    ]}
-  ];
+    ]
+  };
 
-  function itemId(sectieId, index){ return sectieId + "-" + index; }
+  function itemId(sectieId, label){ return sectieId + "#" + label; }
+
+  function migreer(){
+    var oud = null;
+    try{ oud = JSON.parse(localStorage.getItem(SLEUTEL_OUD)); }catch(e){}
+    if(!oud || typeof oud !== "object" || !oud.checked) return null;
+    var nieuw = { checked:{}, open:(oud.open && typeof oud.open === "object") ? oud.open : {} };
+    Object.keys(oud.checked).forEach(function(oldId){
+      var k = oldId.lastIndexOf("-");
+      if(k < 0) return;
+      var sid = oldId.slice(0, k);
+      var i = parseInt(oldId.slice(k + 1), 10);
+      var labels = OUDE_LIJSTEN[sid];
+      if(!labels || isNaN(i) || labels[i] == null) return;
+      var label = labels[i];
+      for(var j = 0; j < SECTIES.length; j++){
+        if(SECTIES[j].items.indexOf(label) !== -1){
+          nieuw.checked[itemId(SECTIES[j].id, label)] = true;
+          break;
+        }
+      }
+    });
+    try{
+      localStorage.setItem(SLEUTEL, JSON.stringify(nieuw));
+      localStorage.removeItem(SLEUTEL_OUD);
+    }catch(e){}
+    return nieuw;
+  }
 
   function leesState(){
     try{
       var s = JSON.parse(localStorage.getItem(SLEUTEL));
       if(s && typeof s === "object") return s;
     }catch(e){}
+    var gemigreerd = migreer();
+    if(gemigreerd) return gemigreerd;
     return { checked:{}, open:{} };
   }
   function schrijfState(state){
@@ -241,7 +332,7 @@
       var ul = document.createElement("div");
       ul.className = "sectie-lijst";
       s.items.forEach(function(label, i){
-        var id = itemId(s.id, i);
+        var id = itemId(s.id, label);
         var row = document.createElement("label");
         row.className = "item";
         var cb = document.createElement("input");
@@ -274,7 +365,7 @@
     var tellingen = {};
     SECTIES.forEach(function(s){
       var c = 0;
-      s.items.forEach(function(_, i){ if(state.checked[itemId(s.id, i)]) c++; });
+      s.items.forEach(function(label){ if(state.checked[itemId(s.id, label)]) c++; });
       tellingen[s.id] = c;
       checked += c;
     });
