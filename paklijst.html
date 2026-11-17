@@ -294,7 +294,11 @@
   function leesState(){
     try{
       var s = JSON.parse(localStorage.getItem(SLEUTEL));
-      if(s && typeof s === "object") return s;
+      if(s && typeof s === "object"){
+        if(!s.checked || typeof s.checked !== "object") s.checked = {};
+        if(!s.open || typeof s.open !== "object") s.open = {};
+        return s;
+      }
     }catch(e){}
     var gemigreerd = migreer();
     if(gemigreerd) return gemigreerd;
@@ -332,10 +336,11 @@
       kop.querySelector(".titel").textContent = s.titel;
 
       kop.addEventListener("click", function(){
-        state.open[s.id] = !open;
+        var nieuw = !(state.open.hasOwnProperty(s.id) ? state.open[s.id] : true);
+        state.open[s.id] = nieuw;
         schrijfState(state);
-        sectie.classList.toggle("open", state.open[s.id]);
-        kop.setAttribute("aria-expanded", state.open[s.id] ? "true" : "false");
+        sectie.classList.toggle("open", nieuw);
+        kop.setAttribute("aria-expanded", nieuw ? "true" : "false");
       });
 
       var ul = document.createElement("div");
