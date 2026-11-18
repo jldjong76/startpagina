@@ -144,12 +144,18 @@
     ]},
     { id:"militaire-kleding", titel:"Militaire kleding", items:[
       "Twee keer BT",
+      "Blauwe hemden",
       "Colletje",
       "Regenpak",
       "Baret",
       "Handschoenen",
       "DT: Pak, wit overhemd, stropdas",
-      "DT Schoenen",
+      "DT: Schoenen",
+      "DT: Sokken en witte hemden",
+      "DT: Witte/bruine/zwarte handschoenen",
+      "Ondergoed",
+      "Sokken",
+      "Polo",
       "Kisten",
       "Elastiekjes voor broekspijpen"
     ]},
@@ -171,7 +177,8 @@
       "Handdoeken",
       "Waszak",
       "Defensiepas",
-      "Oproep- / reservistenpapieren"
+      "Oproep- / reservistenpapieren",
+      "Groene handschoenen"
     ]},
     { id:"reisbescheiden", titel:"Reisbescheiden", items:[
       "ID-kaart of paspoort",
@@ -260,7 +267,20 @@
     ]
   };
 
-  function itemId(label){ return label; }
+  var ID_MAP = {};
+  (function(){
+    var gebruikt = {};
+    SECTIES.forEach(function(s){
+      ID_MAP[s.id] = s.items.map(function(label){
+        var id = label, n = 2;
+        while(gebruikt[id]){ id = label + "~" + n; n++; }
+        gebruikt[id] = true;
+        return id;
+      });
+    });
+  })();
+
+  function itemId(sectieId, index){ return ID_MAP[sectieId][index]; }
 
   function migreer(){
     var v2 = null, v1 = null;
@@ -346,7 +366,7 @@
       var ul = document.createElement("div");
       ul.className = "sectie-lijst";
       s.items.forEach(function(label, i){
-        var id = itemId(label);
+        var id = itemId(s.id, i);
         var row = document.createElement("label");
         row.className = "item";
         var cb = document.createElement("input");
@@ -379,7 +399,7 @@
     var tellingen = {};
     SECTIES.forEach(function(s){
       var c = 0;
-      s.items.forEach(function(label){ if(state.checked[itemId(label)]) c++; });
+      s.items.forEach(function(label, i){ if(state.checked[itemId(s.id, i)]) c++; });
       tellingen[s.id] = c;
       checked += c;
     });
